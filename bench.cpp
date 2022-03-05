@@ -46,9 +46,21 @@ static void bench_neon(benchmark::State &state) {
     state.SetItemsProcessed(bytes);
 }
 
+static void bench_memcpy(benchmark::State &state) {
+    uint8_t *buf = (uint8_t *)malloc(encoded_length(strlen(paragraph)) + 1);
+    size_t bytes = strlen(paragraph);
+
+    for (auto _ : state) {
+        memcpy(buf, paragraph, bytes);
+        benchmark::DoNotOptimize(buf);
+    }
+
+    state.SetItemsProcessed(bytes);
+}
 
 BENCHMARK(bench_naive);
 BENCHMARK(bench_neon);
+BENCHMARK(bench_memcpy);
 
 #if 1
 BENCHMARK_MAIN();

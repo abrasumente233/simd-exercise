@@ -21,23 +21,16 @@ static inline uint8x16_t packed_mask(uint8_t x) {
     return vdupq_n_u8(x);
 }
 
-static uint8x16_t lookup_branchless(uint8x16_t in) {
-    uint8x16_t shift = packed_mask(65);
-
-    shift = vaddq_u8(shift,
-                     vandq_u8(vcgtq_u8(in, packed_mask(25)), packed_mask(6)));
-    shift = vsubq_u8(shift,
-                     vandq_u8(vcgtq_u8(in, packed_mask(51)), packed_mask(75)));
-    shift = vsubq_u8(shift,
-                     vandq_u8(vcgtq_u8(in, packed_mask(61)), packed_mask(15)));
-    shift = vaddq_u8(shift,
-                     vandq_u8(vcgtq_u8(in, packed_mask(62)), packed_mask(3)));
-
-    return vaddq_u8(shift, in);
-}
+static const unsigned char *lut = (const unsigned char *)
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 void encode(const uint8_t *input, size_t bytes, uint8_t *output) {
+    
     size_t lim = bytes - bytes % (16 * 3);
+
+    // @TODO: We should really do this only when lim >= 48,
+    // if the overhead were too huge.
+    uint8x16x4_t vlut = vld1q_u8_x4(lut);
 
     size_t i;
     for (i = 0; i < lim; i += 16 * 3) {
@@ -56,10 +49,10 @@ void encode(const uint8_t *input, size_t bytes, uint8_t *output) {
 
         uint8x16x4_t res;
 
-        res.val[0] = lookup_branchless(v0);
-        res.val[1] = lookup_branchless(v1);
-        res.val[2] = lookup_branchless(v2);
-        res.val[3] = lookup_branchless(v3);
+        res.val[0] = vqtbl4q_u8(vlut, v0);
+        res.val[1] = vqtbl4q_u8(vlut, v1);
+        res.val[2] = vqtbl4q_u8(vlut, v2);
+        res.val[3] = vqtbl4q_u8(vlut, v3);
 
         vst4q_u8(output, res);
 
